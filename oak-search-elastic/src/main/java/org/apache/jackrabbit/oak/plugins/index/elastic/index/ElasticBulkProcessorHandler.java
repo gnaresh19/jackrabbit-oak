@@ -153,6 +153,7 @@ class ElasticBulkProcessorHandler {
                 .setBulkActions(indexDefinition.bulkActions)
                 .setBulkSize(new ByteSizeValue(indexDefinition.bulkSizeBytes))
                 .setFlushInterval(TimeValue.timeValueMillis(indexDefinition.bulkFlushIntervalMs))
+                .setConcurrentRequests(indexDefinition.concurrentRequests)
                 .setBackoffPolicy(BackoffPolicy.exponentialBackoff(
                         TimeValue.timeValueMillis(indexDefinition.bulkRetriesBackoff), indexDefinition.bulkRetries)
                 )

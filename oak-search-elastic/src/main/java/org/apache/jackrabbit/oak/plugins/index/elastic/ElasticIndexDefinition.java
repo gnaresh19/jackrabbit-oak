@@ -42,6 +42,9 @@ public class ElasticIndexDefinition extends IndexDefinition {
     public static final String BULK_ACTIONS = "bulkActions";
     public static final int BULK_ACTIONS_DEFAULT = 250;
 
+    public static final String CONCURRENT_REQUESTS = "concurrentRequests";
+    public static final int CONCURRENT_REQUESTS_DEFAULT = 1;
+
     public static final String BULK_SIZE_BYTES = "bulkSizeBytes";
     public static final long BULK_SIZE_BYTES_DEFAULT = 2 * 1024 * 1024; // 2MB
 
@@ -108,6 +111,7 @@ public class ElasticIndexDefinition extends IndexDefinition {
     private final String indexPrefix;
     private final String indexAlias;
     public final int bulkActions;
+    public int concurrentRequests;
     public final long bulkSizeBytes;
     public final long bulkFlushIntervalMs;
     public final int bulkRetries;
@@ -128,6 +132,7 @@ public class ElasticIndexDefinition extends IndexDefinition {
         this.indexPrefix = indexPrefix;
         this.indexAlias = ElasticIndexNameHelper.getElasticSafeIndexName(indexPrefix, getIndexPath());
         this.bulkActions = getOptionalValue(defn, BULK_ACTIONS, BULK_ACTIONS_DEFAULT);
+        this.concurrentRequests = getOptionalValue(defn, CONCURRENT_REQUESTS, CONCURRENT_REQUESTS_DEFAULT);
         this.bulkSizeBytes = getOptionalValue(defn, BULK_SIZE_BYTES, BULK_SIZE_BYTES_DEFAULT);
         this.bulkFlushIntervalMs = getOptionalValue(defn, BULK_FLUSH_INTERVAL_MS, BULK_FLUSH_INTERVAL_MS_DEFAULT);
         this.bulkRetries = getOptionalValue(defn, BULK_RETRIES, BULK_RETRIES_DEFAULT);
