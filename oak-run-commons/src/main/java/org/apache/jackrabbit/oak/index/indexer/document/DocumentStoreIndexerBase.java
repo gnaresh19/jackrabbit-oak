@@ -45,6 +45,7 @@ import org.apache.jackrabbit.oak.plugins.index.progress.MetricRateEstimator;
 import org.apache.jackrabbit.oak.plugins.index.search.IndexDefinition;
 import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStore;
 import org.apache.jackrabbit.oak.plugins.metric.MetricStatisticsProvider;
+import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.filter.PathFilter;
@@ -238,23 +239,31 @@ public abstract class DocumentStoreIndexerBase implements Closeable{
 
         closer.register(indexer);
 
-        FlatFileStore flatFileStore = buildFlatFileStore(checkpointedState, indexer, indexer::shouldInclude, null);
+       // FlatFileStore flatFileStore = buildFlatFileStore(checkpointedState, indexer, indexer::shouldInclude, null);
 
         progressReporter.reset();
-        if (flatFileStore.getEntryCount() > 0){
+        /*if (flatFileStore.getEntryCount() > 0){
             FlatFileStore finalFlatFileStore = flatFileStore;
             progressReporter.setNodeCountEstimator((String basePath, Set<String> indexPaths) -> finalFlatFileStore.getEntryCount());
-        }
+        }*/
 
         progressReporter.reindexingTraversalStart("/");
 
         preIndexOpertaions(indexer.getIndexers());
 
         Stopwatch indexerWatch = Stopwatch.createStarted();
-        for (NodeStateEntry entry : flatFileStore) {
+        /*for (NodeStateEntry entry : flatFileStore) {
             reportDocumentRead(entry.getPath(), progressReporter);
             indexer.index(entry);
         }
+        */
+        /**
+         * stream documents from Mongo
+         * Create NodeStateEntry using NodeStateEntryReader
+         * invoke indexer.index on NodeStateEntry
+         */
+
+        fetchDocumentsToIndex(checkpointedState, indexer, indexer::shouldInclude, null);
 
         progressReporter.reindexingTraversalEnd();
         progressReporter.logReport();
@@ -352,5 +361,45 @@ public abstract class DocumentStoreIndexerBase implements Closeable{
                 }
             }
         }
+    }
+
+    /**
+     * stream documents from nodestore and index it.
+     * @param checkpointedState
+     * @param indexer
+     * @param pathPredicate
+     * @param preferredPathElements
+     */
+    private void fetchDocumentsToIndex(NodeState checkpointedState, CompositeIndexer indexer, Predicate<String> pathPredicate, Set<String> preferredPathElements)  {
+        log.info(">>> streaming mongo document to index in elastic");
+        Stopwatch nodeStoreWatch = Stopwatch.createStarted();
+        int executionCount = 1;
+        Exception lastException = null;
+
+        DocumentNodeState rootDocumentState = (DocumentNodeState) checkpointedState;
+        DocumentNodeStore nodeStore = (DocumentNodeStore) indexHelper.getNodeStore();
+
+        MemoryManager memoryManager = new DefaultMemoryManager();
+        NodeStateEntryTraverserFactory nodeStatesFactory = new MongoNodeStateEntryTraverserFactory(rootDocumentState.getRootRevision(),
+                nodeStore, getMongoDocumentStore(), traversalLog, indexer);
+        BlobStore blobStore = indexHelper.getGCBlobStore();
+
+        try (NodeStateEntryTraverser nodeStates = nodeStatesFactory.create(new MongoDocumentTraverser.TraversingRange(new LastModifiedRange(0,
+                Long.MAX_VALUE),null))) {
+            for (NodeStateEntry e : nodeStates) {
+             //   log.info("<<<e: [{}] [{}]", e.toString(), e.getNodeState().toString());
+                String path = e.getPath();
+                if (!NodeStateUtils.isHiddenPath(path) && pathPredicate.test(path)) {
+                 //   log.info("nodestate: path:[{}], data:[{}]", e.getPath(), e.getNodeState().toString());
+                    indexer.index(e);
+                    //if (flag) log.info(">>path:[{}]", path);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Something wrong",e);
+        }
+        executionCount++;
+
+        log.info("Completed fetching MongoDocuments {}", nodeStoreWatch);
     }
 }

@@ -1291,10 +1291,13 @@ public final class DocumentNodeStore
                 @Override
                 public DocumentNodeState call() throws Exception {
                     boolean nodeDoesNotExist = checkNodeNotExistsFromChildrenCache(path, rev);
+
                     if (nodeDoesNotExist){
+                        LOG.info(">> nodeDoesNotExist {}", path);
                         return missing;
                     }
                     DocumentNodeState n = readNode(path, rev);
+                    LOG.info(">> node fetched from mongo {}", path);
                     if (n == null) {
                         n = missing;
                     }

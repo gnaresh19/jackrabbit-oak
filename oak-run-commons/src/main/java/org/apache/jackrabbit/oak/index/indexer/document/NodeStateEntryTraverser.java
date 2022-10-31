@@ -31,6 +31,8 @@ import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentTraverser;
 import org.apache.jackrabbit.oak.plugins.document.util.CloseableIterable;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -49,6 +51,8 @@ public class NodeStateEntryTraverser implements Iterable<NodeStateEntry>, Closea
     private final RevisionVector rootRevision;
     private final DocumentNodeStore documentNodeStore;
     private final MongoDocumentStore documentStore;
+    private final Logger log = LoggerFactory.getLogger(getClass());
+
     /**
      * Traverse only those node states which have been modified on or after lower limit
      * and before the upper limit of this range.
@@ -124,10 +128,13 @@ public class NodeStateEntryTraverser implements Iterable<NodeStateEntry>, Closea
             return emptyList();
         }
 
+       // log.info(">>>>>>nodeState: [{}] [{}]", nodeState.getPath(), nodeState .toString());
+
         return transform(
                 concat(singleton(nodeState),
                     nodeState.getAllBundledNodesStates()),
                 dns -> {
+                    log.info("<<<dns: [{}] [{}]", dns.getPath(), dns.toString());
                     NodeStateEntry.NodeStateEntryBuilder builder =  new NodeStateEntry.NodeStateEntryBuilder(dns, dns.getPath().toString());
                     if (doc.getModified() != null) {
                         builder.withLastModified(doc.getModified());

@@ -140,6 +140,7 @@ public class MongoDocumentTraverser {
                     //TODO Review the cache update approach where tracker has to track *all* docs
                     if (collection == Collection.NODES) {
                         NodeDocument nodeDoc = (NodeDocument) doc;
+                        LOG.info("read & store in cache: path[{}] doc:[{}]", nodeDoc.getPath(), nodeDoc.asString());
                         getNodeDocCache().put(nodeDoc);
                     }
                     return doc;
